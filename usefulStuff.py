@@ -221,3 +221,22 @@ def progress_bar(current: int, total: int, width: int = 30, label: str = "") -> 
     bar = "#" * filled + " " * (width - filled)
     prefix = f"{label} " if label else ""
     return f"{prefix}[{bar}] {int(pct * 100)}%"
+
+#---- Spinner ------------------------------------------------------------------------------------
+def spinner(duration: float = 2.0, delay: float = 0.1, label: str = ""):
+    """Print a rotating spinner (-, /, |, \) for the specified duration.
+
+    Args:
+        duration: Total time in seconds to display the spinner.
+        delay: Time in seconds between frames.
+        label: Optional text to show before the spinner character.
+    """
+    chars = ["-", "/", "|", "\\"]
+    if delay <= 0:
+        return
+    steps = int(duration / delay)
+    for i in range(steps):
+        print(f"\r{label} {chars[i % len(chars)]}", end="", flush=True)
+        time.sleep(delay)
+    # Clear the spinner line
+    print("\r" + " " * (len(label) + 2) + "\r", end="")
