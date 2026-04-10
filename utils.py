@@ -2,7 +2,7 @@
 utils.py — General-purpose terminal utilities for Python projects.
 
 Usage:
-    from utils import slow_print, print_separator, ...
+    from utils import *
 """
 
 import time
