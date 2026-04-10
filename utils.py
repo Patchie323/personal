@@ -10,6 +10,8 @@ import os
 import sys
 import textwrap
 import random
+import webbrowser
+import subprocess
 
 
 # ── Text Output ───────────────────────────────────────────────────────────────
@@ -222,7 +224,200 @@ def progress_bar(current: int, total: int, width: int = 30, label: str = "") -> 
     prefix = f"{label} " if label else ""
     return f"{prefix}[{bar}] {int(pct * 100)}%"
 
-#---- Spinner ------------------------------------------------------------------------------------
+# ── String Helpers ────────────────────────────────────────────────────────────
+
+def truncate(text: str, max_len: int, suffix: str = "...") -> str:
+    """Shorten text to max_len characters, appending suffix if cut.
+
+    Example:
+        truncate("Hello, world!", 8)  →  "Hello..."
+    """
+    if len(text) <= max_len:
+        return text
+    return text[:max_len - len(suffix)] + suffix
+
+
+def typewriter(text: str, delay: float = 0.05, newline: bool = True):
+    """Print text with a blinking cursor effect between characters."""
+    for i, char in enumerate(text):
+        print(f"\r{text[:i + 1]}_", end="", flush=True)
+        time.sleep(delay)
+    print(f"\r{text} ", end="")
+    if newline:
+        print()
+
+
+# ── Math Helpers ──────────────────────────────────────────────────────────────
+
+def map_range(value: float, in_min: float, in_max: float,
+              out_min: float, out_max: float) -> float:
+    """Rescale a value from one range to another.
+
+    Example:
+        map_range(50, 0, 100, 0, 255)  →  127.5   (half HP → half brightness)
+        map_range(7, 0, 10, 0, 30)    →  21.0    (score → bar width)
+    """
+    if in_max == in_min:
+        return out_min
+    ratio = (value - in_min) / (in_max - in_min)
+    return out_min + ratio * (out_max - out_min)
+
+
+# ── Time Helpers ──────────────────────────────────────────────────────────────
+
+def format_duration(seconds: float) -> str:
+    """Convert a number of seconds into a human-readable string.
+
+    Examples:
+        format_duration(45)    →  "45s"
+        format_duration(3661)  →  "1h 2m 1s"
+        format_duration(90)    →  "1m 30s"
+    """
+    seconds = int(seconds)
+    parts = []
+    for unit, size in [("h", 3600), ("m", 60), ("s", 1)]:
+        if seconds >= size:
+            parts.append(f"{seconds // size}{unit}")
+            seconds %= size
+    return " ".join(parts) if parts else "0s"
+
+
+# ── Terminal UI ───────────────────────────────────────────────────────────────
+
+def menu(title: str, options: list) -> int:
+    """Display a numbered menu and return the index (0-based) of the user's choice.
+
+    Example:
+        idx = menu("Main Menu", ["Start Game", "Load Game", "Quit"])
+    """
+    print_separator()
+    print(f"  {title}")
+    print_separator()
+    for i, option in enumerate(options, 1):
+        print(f"  [{i}] {option}")
+    print_separator()
+    return prompt_int("  > ", min_val=1, max_val=len(options)) - 1
+
+
+def paginate(items: list, page_size: int = 10, title: str = ""):
+    """Display a list in pages with next/prev navigation.
+
+    Yields nothing — handles display and navigation internally.
+    """
+    total = len(items)
+    page = 0
+    total_pages = max(1, -(-total // page_size))  # ceiling division
+
+    while True:
+        clear_screen()
+        if title:
+            print_header(title)
+        start = page * page_size
+        chunk = items[start:start + page_size]
+        for i, item in enumerate(chunk, start + 1):
+            print(f"  {i:>3}. {item}")
+
+        print_separator()
+        print(f"  Page {page + 1}/{total_pages}  ({total} items)")
+        nav = []
+        if page > 0:
+            nav.append("[P] Prev")
+        if page < total_pages - 1:
+            nav.append("[N] Next")
+        nav.append("[Q] Quit")
+        print("  " + "  ".join(nav))
+
+        choice = input("  > ").strip().lower()
+        if choice == "n" and page < total_pages - 1:
+            page += 1
+        elif choice == "p" and page > 0:
+            page -= 1
+        elif choice == "q":
+            break
+
+
+# ── System / OS ──────────────────────────────────────────────────────────────
+
+def confirm_action(prompt: str = "Are you sure?") -> bool:
+    """Require the user to type 'yes' in full before proceeding.
+
+    Returns True if confirmed, False otherwise. Intended for destructive actions.
+
+    Example:
+        if confirm_action("Delete all save files?"):
+            delete_saves()
+    """
+    print(f"  {prompt}")
+    print("  Type 'yes' to confirm: ", end="")
+    return input().strip().lower() == "yes"
+
+
+def copy_to_clipboard(text: str):
+    """Copy text to the system clipboard.
+
+    Works on macOS (pbcopy), Windows (clip), and Linux (xclip/xsel).
+    """
+    if sys.platform == "darwin":
+        subprocess.run(["pbcopy"], input=text.encode(), check=True)
+    elif sys.platform == "win32":
+        subprocess.run(["clip"], input=text.encode(), check=True)
+    else:
+        try:
+            subprocess.run(["xclip", "-selection", "clipboard"], input=text.encode(), check=True)
+        except FileNotFoundError:
+            subprocess.run(["xsel", "--clipboard", "--input"], input=text.encode(), check=True)
+
+
+def open_in_browser(url: str):
+    """Open a URL in the default web browser."""
+    webbrowser.open(url)
+
+
+def open_file(path: str):
+    """Open a file or folder with the default system application."""
+    if sys.platform == "darwin":
+        subprocess.run(["open", path], check=True)
+    elif sys.platform == "win32":
+        os.startfile(path)
+    else:
+        subprocess.run(["xdg-open", path], check=True)
+
+
+def beep(count: int = 1):
+    """Sound the terminal bell `count` times."""
+    for _ in range(count):
+        print("\a", end="", flush=True)
+        if count > 1:
+            time.sleep(0.3)
+
+
+# ── String Extras ─────────────────────────────────────────────────────────────
+
+def pluralize(n: int, word: str, plural: str = None) -> str:
+    """Return 'n word' or 'n words' depending on n.
+
+    Optionally supply an irregular plural form.
+
+    Examples:
+        pluralize(1, "item")         →  "1 item"
+        pluralize(3, "item")         →  "3 items"
+        pluralize(2, "person", "people")  →  "2 people"
+    """
+    if n == 1:
+        return f"{n} {word}"
+    return f"{n} {plural if plural else word + 's'}"
+
+
+def wrap_text(text: str, width: int = 72, indent: str = "") -> str:
+    """Word-wrap text to a given width, with optional leading indent per line.
+
+    Example:
+        print(wrap_text("A very long string...", width=40, indent="  "))
+    """
+    return textwrap.fill(text, width=width, initial_indent=indent, subsequent_indent=indent)
+
+
+# ── Spinner ───────────────────────────────────────────────────────────────────
 def spinner(duration: float = 2.0, delay: float = 0.1, label: str = ""):
     """Print a rotating spinner (-, /, |, \) for the specified duration.
 
