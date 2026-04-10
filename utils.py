@@ -3,6 +3,8 @@ utils.py — General-purpose terminal utilities for Python projects.
 
 Usage:
     from utils import *
+Version 3.0
+Krishay Panchal
 """
 
 import time
@@ -387,7 +389,7 @@ def beep(count: int = 1):
     """Sound the terminal bell `count` times."""
     for _ in range(count):
         print("\a", end="", flush=True)
-        if count > 1:
+        if count > 1: 
             time.sleep(0.3)
 
 
