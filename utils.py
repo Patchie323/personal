@@ -155,7 +155,8 @@ class Color:
 
 
 def cprint(text: str, color: str):
-    """Print text in the given ANSI color, then reset."""
+    """Print text in the given ANSI color, then reset.
+    use cprint("string", Color.WHATEVER-COLOR)  """
     print(f"{color}{text}{Color.RESET}")
 
 
